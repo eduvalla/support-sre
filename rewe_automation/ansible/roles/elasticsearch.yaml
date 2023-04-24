@@ -1,0 +1,15 @@
+---
+- hosts: elasticsearch
+  become: yes
+  tasks:
+  - name: Install package
+    apt:
+      name: elasticsearch
+      state: present
+
+  - name: Start and enable elasticsearch service
+    ansible.builtin.service:
+      name: elasticsearch
+      state: started
+      enabled: yes
+    become: yes

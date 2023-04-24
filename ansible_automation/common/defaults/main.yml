@@ -1,0 +1,5 @@
+---
+additional_server_disk_device: /dev/sdb
+
+artifactRegistry:
+  repository_deb:

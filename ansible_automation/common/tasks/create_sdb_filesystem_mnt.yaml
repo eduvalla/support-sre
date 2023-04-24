@@ -1,0 +1,46 @@
+- name: check if xtra disk exists on server
+  stat:
+    path: "{{ device }}"
+  register: stat_device
+
+- name: "check if {{ device }} is already mounted"
+  shell: "mount"
+  register: mount
+
+
+#https://docs.ansible.com/ansible/latest/collections/community/general/parted_module.html
+- name: "run the following if {{ device }} exist on server"
+  block:        
+      - name: Create a new xfs primary partition
+        community.general.parted:
+          device: "{{ device }}"
+          number: 1
+          state: present
+          fs_type: xfs
+          label: gpt
+        register: partition   
+      
+      - name: "Create a xfs filesystem on {{ device }} and check disk blocks"
+        community.general.filesystem:
+          fstype: xfs
+          dev: "{{ device }}"
+        register: filesystem
+        when: device is defined
+
+      - name: create directory for xtra disk
+        file:
+          path: "/mnt"
+          state: directory
+
+      - name: Mount up device
+        ansible.posix.mount:
+          path: /mnt
+          src: "{{ device }}"
+          fstype: xfs
+          state: mounted
+        when: device is defined
+  when: 
+   - stat_device.stat.exists
+   - "device not in mount.stdout"
+
+

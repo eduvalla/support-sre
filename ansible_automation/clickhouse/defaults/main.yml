@@ -1,0 +1,27 @@
+---
+
+# server xml variables
+cluster_name: "{{ instana_environment }}-clickhouse"
+use_ssl: true
+use_ssl_zk: true
+ch_port: 9000
+zk_port: 2181
+zk_secure_port: 2281
+shards: 1
+internal_replication: true
+shard_number: 0
+ROOT_MOUNT: /mnt
+
+clickhouse_install_path: /etc/clickhouse-server
+certificate_path: /mnt/certs
+user_name: clickhouse
+group_name: clickhouse
+
+#backup variables
+ch_backup_package: https://github.com/AlexAkulov/clickhouse-backup/releases/download/v2.1.0/clickhouse-backup_2.1.0_amd64.deb
+bucket_name: instana-clickhouse-{{ instana_environment }}
+
+
+
+
+

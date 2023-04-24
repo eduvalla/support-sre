@@ -1,0 +1,15 @@
+---
+- hosts: clickhouse_zookeeper
+  become: yes
+  tasks:
+  - name: Install package
+    apt:
+      name: zookeeper
+      state: present
+
+  - name: Start and enable clickhouse zookeeper service
+    ansible.builtin.service:
+      name: zookeeper
+      state: started
+      enabled: yes
+    become: yes

@@ -1,0 +1,10 @@
+---
+replication_factor: 3
+
+# list of keyspaces to be updated with replication factor
+#TODO: modify keyspace_list to match actual real names or modify the keyspace names in C*
+keyspace_list:
+  - onprem_rewe_prod
+  - onprem_rewe_nonprod
+  - system_auth
+  - shared

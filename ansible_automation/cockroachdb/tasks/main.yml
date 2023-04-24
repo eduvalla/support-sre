@@ -1,0 +1,175 @@
+---
+- name: create group cockroachdb
+  ansible.builtin.group:
+    name: "{{ group_name }}"
+    state: present
+
+- name: create user cockroachdb
+  ansible.builtin.user:
+    name: "{{ user_name }}"
+    state: present
+    createhome: false
+    group: "{{ group_name }}"
+
+- name: create cockroachdb data directories
+  ansible.builtin.file:
+    path: '{{ item }}'
+    state: directory
+    owner: "{{ user_name }}"
+    group: "{{ group_name }}"
+    mode: 0775
+  loop: "{{ datastore_directories }}"
+  become: yes
+
+- name: Download gz from ar
+  shell:
+    cmd: "gsutil cp gs://{{ artifactRegistry.repository_generic }}/{{ artifactRegistry.cockroach_package }} /tmp/"
+  register: download
+  until: download is succeeded
+  retries: 3
+  delay: 10
+
+- name: unarchive cockroach package
+  ansible.builtin.unarchive:
+    src: /tmp/{{ artifactRegistry.cockroach_package }}
+    dest: /tmp
+    remote_src: yes
+
+- name: directories for cockroachdb
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ user_name }}"
+    group: "{{ group_name }}"
+    mode: 0755
+  loop:
+    - /usr/local/lib/cockroach
+    - /var/lib/cockroach
+
+
+- name: copy cockroachdb
+  ansible.builtin.copy:
+    directory_mode: yes
+    remote_src: yes
+    src: "/tmp/cockroach-v{{ artifactRegistry.cockroach_version }}.linux-amd64/cockroach"
+    dest: /usr/local/bin
+    owner: "{{ user_name }}"
+    group: "{{ group_name }}"
+    mode: 0755
+
+- name: copy libs
+  ansible.builtin.copy:
+    remote_src: yes
+    src: "/tmp/cockroach-v{{ artifactRegistry.cockroach_version }}.linux-amd64/lib/{{ item }}"
+    dest: /usr/local/lib/cockroach
+  loop:
+    - libgeos.so
+    - libgeos_c.so
+
+
+- name: generate user certificates
+  include_tasks: generate-certs.yml
+
+
+- ansible.builtin.set_fact:
+    cert_host: "{{ cert_host | default([]) + [ inventory_hostname ] }}"
+
+- name: copy / rename cert
+  ansible.builtin.copy:
+    src: "{{ certificate_path }}/{{ item[0] }}.{{ item[1] }}"
+    dest: "{{ certificate_path }}/node.{{ item[1] }}"
+    force: yes
+    remote_src: yes
+  loop: "{{ cert_host | product(['key','crt']) }}"
+
+- name: remove cert with ip address as name
+  ansible.builtin.file:
+    path: "{{ certificate_path}}/{{ item }}"
+    state: absent
+  loop:
+    - "{{ inventory_hostname }}.crt"
+    - "{{ inventory_hostname }}.key"
+
+
+- name: set correct ownership on keystore files
+  ansible.builtin.file:
+    path: "{{ certificate_path }}/{{ item }}"
+    state: file
+    mode: 0700
+    owner: "{{ user_name }}"
+    group: "{{ group_name}}"
+    force: true
+  become: yes
+  loop:
+    - ca.crt
+    - node.crt
+    - node.key
+
+- name: create securecockroachdb service - secure
+  ansible.builtin.template:
+    src: cockroachdb.service.j2
+    dest: /etc/systemd/system/cockroachdb.service
+    mode: 0644
+    owner: root
+    group: root
+    force: yes
+
+
+- name: Start and enable cockroachdb service
+  ansible.builtin.systemd:
+    name: cockroachdb
+    state: restarted
+    daemon_reload: yes
+    enabled: yes
+  become: yes
+
+
+- name: initialize cluster
+  ansible.builtin.shell: "cockroach init --insecure	--host={{ ansible_host }}"
+  register: initialize_cluster
+  run_once: yes
+  ignore_errors: yes
+
+- name: check if cluster already initialized
+  ansible.builtin.debug:
+    msg:
+      - "Cluster already initialized"
+  when:
+    - "initialize_cluster.rc | int > 0"
+    - "'already' in initialize_cluster.stderr"
+
+- name: new cluster successfully initialized
+  ansible.builtin.debug:
+    msg:
+      - "New cluster successfully initialized"
+  when: "initialize_cluster.rc | int == 0"
+
+- name: error setting up cluster
+  ansible.builtin.debug:
+    msg:
+      - "Problem initializing new cluster: {{ initialize_cluster.stderr }}"
+  when:
+    - "'already' in initialize_cluster.stderr"
+    - "initialize_cluster.rc | int > 0"
+
+- name: result of initializing the cluster
+  ansible.builtin.debug:
+    msg:
+      - "{{ initialize_cluster }}"
+
+- name: check database is up and running
+  ansible.builtin.shell: "cockroach demo \
+                          --execute='SELECT ST_IsValid(ST_MakePoint(1,2));'  \
+                          --nodes={{ ansible_play_hosts_all | length }}"
+  register: validation
+
+- name: validation output
+  ansible.builtin.debug:
+    msg:
+      - "{{ validation }}"
+  failed_when: validation.rc | int != 0
+
+- name: create backup cronjob
+  ansible.builtin.command:
+    cmd: cockroach sql --host {{ ansible_host }}:{{ crdb_port }} --insecure --execute "CREATE SCHEDULE IF NOT EXISTS cockroach_nightly_backup FOR BACKUP INTO 'gs://{{ bucket_name }}?AUTH=implicit' RECURRING '@daily' FULL BACKUP ALWAYS WITH SCHEDULE OPTIONS ignore_existing_backups";
+  run_once: true

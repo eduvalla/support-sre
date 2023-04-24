@@ -1,0 +1,7 @@
+project_id     = "instana-production"
+network        = "instana-orange"
+zone           = "us-east1-c"
+subnetwork     = "instana-orange-private"
+instana_region = "orange"
+apt_state      = "us"
+apt_region     = "us-west-2"

@@ -1,0 +1,7 @@
+project_id     = "instana-production"
+network        = "instana-green"
+zone           = "europe-west1-c"
+subnetwork     = "instana-green-private"
+instana_region = "green"
+apt_state      = "eu"
+apt_region     = "eu-west-1"

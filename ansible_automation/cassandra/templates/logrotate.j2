@@ -1,0 +1,13 @@
+/var/log/cassandra/backup.log {
+        size 100M
+        create 755 {{ user_name }} {{ group_name }}
+        rotate 4
+        missingok
+}
+
+/var/log/cassandra/restore.log {
+        size 100M
+        create 755 {{ user_name }} {{ group_name }}
+        rotate 4
+        missingok
+}

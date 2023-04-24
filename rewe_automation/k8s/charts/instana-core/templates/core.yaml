@@ -1,0 +1,80 @@
+apiVersion: instana.io/{{ .Values.core.apiVersion }}
+kind: Core
+metadata:
+  name: {{- include "instana-core.fullname" . | nindent 4 }}
+  labels:
+    {{- include "instana-core.labels" . | nindent 4 }}
+spec:
+  agentAcceptorConfig:
+    host: ingress.{{ .Values.core.baseDomain }}
+    port: 443
+  baseDomain: {{ .Values.core.baseDomain }}
+  datastoreConfigs:
+  {{- if eq .Values.core.apiVersion "v1beta1" }}
+    - addresses:
+        - {{ .Values.core.dataStoreHost }}
+      type: cassandra
+    - addresses:
+        - {{ .Values.core.dataStoreHost }}
+      type: cockroachdb
+    - addresses:
+        - {{ .Values.core.dataStoreHost }}
+      type: clickhouse
+    - addresses:
+        - {{ .Values.core.dataStoreHost }}
+      type: elasticsearch
+    - addresses:
+        - {{ .Values.core.dataStoreHost }}
+      type: kafka
+    - addresses:
+        - {{ .Values.core.dataStoreHost }}
+      type: aggregator
+  {{- else }}
+    cassandraConfigs:
+      - hosts:
+          - {{ .Values.core.dataStoreHost }}
+    clickhouseConfigs:
+      - hosts:
+          - {{ .Values.core.dataStoreHost }}
+    cockroachdbConfigs:
+      - hosts:
+          - {{ .Values.core.dataStoreHost }}
+    elasticsearchConfig:
+      hosts:
+        - {{ .Values.core.dataStoreHost }}
+    kafkaConfig:
+      hosts:
+        - {{ .Values.core.dataStoreHost }}
+    beeInstanaConfig:
+      hosts:
+        - {{ .Values.core.dataStoreHost }}
+  {{- end }}
+  {{- with .Values.core.emailconfig }}
+  emailConfig:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with .Values.core.imageConfig }}
+  imageConfig:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with .Values.core.imagePullSecrets }}
+  imagePullSecrets:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with .Values.core.rawSpansStorageConfig }}
+  rawSpansStorageConfig:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  resourceProfile: {{ .Values.core.resourceProfile }}
+  {{- with .Values.core.serviceProviderConfig }}
+  serviceProviderConfig:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with .Values.core.featureFlags }}
+  featureFlags:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with .Values.core.serviceAccountAnnotations }}
+  serviceAccountAnnotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}

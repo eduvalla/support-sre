@@ -1,0 +1,15 @@
+apiVersion: instana.io/{{ .Values.unit.apiVersion }}
+kind: Unit
+metadata:
+  name: {{- include "instana-unit.fullname" . | nindent 4 }}
+  labels:
+    {{- include "instana-unit.labels" . | nindent 4 }}
+spec:
+  coreName: {{ .Values.unit.coreName }}
+  coreNamespace: {{ .Values.unit.coreNamespace }}
+  {{- if eq .Values.unit.apiVersion "v1beta1" }}
+  initialAgentKey: {{ first .Values.secret.agentKeys }}
+  {{- end }}
+  resourceProfile: {{ .Values.unit.resourceProfile }}
+  tenantName: {{ .Values.unit.tenantName }}
+  unitName: {{ .Values.unit.unitName }}

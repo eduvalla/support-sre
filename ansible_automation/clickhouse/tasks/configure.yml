@@ -1,0 +1,48 @@
+- name: get index of current ip from complete list of hosts
+  ansible.builtin.debug:
+    msg:
+      - "{{ lookup('ansible.utils.index_of', ansible_play_hosts_all, 'eq', ansible_host) }}"
+    verbosity: 2
+
+- name: index of host
+  ansible.builtin.set_fact: 
+      host_index: "{{ lookup('ansible.utils.index_of', ansible_play_hosts_all, 'eq', ansible_host) | int }}"
+
+- name: modulo of index
+  ansible.builtin.debug:
+    msg: 
+      - "Modulo ({{ host_index | int }}): {{ host_index|int % 2 }}"
+      - "shard number {{ (host_index|int / 2)|int  + 1 | int }}"
+    verbosity: 2
+
+- name: save shard number
+  ansible.builtin.set_fact:
+    shard_number: "{{ (host_index|int / 2)|int  + 1 | int }}"
+
+- name: determine if node1 or node2 in shard
+  ansible.builtin.set_fact:
+    node1: "{{ ansible_host }}"
+    node2: "{{ ansible_play_hosts_all[host_index|int + 1] }}"
+  when: host_index | int % 2 == 0
+
+- name: determine if node1 or node2 in shard
+  ansible.builtin.set_fact:
+    node1: "{{ ansible_play_hosts_all[host_index|int - 1] }}"
+    node2: "{{ ansible_host }}"
+  when: host_index | int % 2 == 1
+
+- ansible.builtin.debug:
+   msg:
+     - " node1={{ node1 }} & node2={{node2 }} in shard number {{ shard_number }}"
+   verbosity: 2
+  
+- name: configuration - server
+  ansible.builtin.template:
+    src: server.xml.j2
+    dest: "{{ clickhouse_install_path }}/config.xml"
+    mode: 0644
+    owner: clickhouse
+    group: clickhouse
+    force: true
+  vars:
+    replica: "{% if host_index | int % 2 == 0 %}{{ node2 }}{% else %}{{ node1 }}{% endif %}"

@@ -1,0 +1,177 @@
+---
+- name: "create group {{ group_name}}"
+  ansible.builtin.group:
+    name: "{{ group_name}}"
+    state: present
+
+- name: "create user {{ user_name}}"
+  ansible.builtin.user:
+    name: "{{ user_name}}"
+    state: present
+    createhome: false
+    group: "{{ group_name}}"
+
+- name: create elasticsearch data directories
+  ansible.builtin.file:
+    path: '/mnt/{{ item }}/'
+    state: directory
+    owner: "{{ user_name}}"
+    group: "{{ group_name}}"
+    mode: 0775
+  loop:
+    - data
+    - logs
+    - plugins
+    - work
+
+- name: make path for system override settings
+  ansible.builtin.file:
+    path: /etc/systemd/system/elasticsearch.service.d/
+    state: directory
+    owner: root
+    group: root
+    mode: 0775
+
+- name: create a file with override system settings
+  ansible.builtin.template:
+    src: override.conf.j2
+    dest: /etc/systemd/system/elasticsearch.service.d/override.conf
+    owner: root
+    group: root
+    mode: 0644
+    force: true
+    backup: true
+
+- name: install prereqs
+  become: yes
+  ansible.builtin.apt:
+    name: "{{ item }}"
+  loop:
+    - apt-transport-https
+
+- name: Install package
+  become: yes
+  ansible.builtin.apt:
+    name: elasticsearch
+    allow_unauthenticated: yes
+    update_cache: yes
+  register: apt_update
+  until: apt_update is success
+
+
+- name: create additional elasticsearch settings
+  ansible.builtin.template:
+    src: elasticsearch.j2
+    dest: /etc/default/elasticsearch
+    mode: 0644
+    owner: "{{ user_name}}"
+    group: "{{ group_name}}"
+    force: true
+    backup: true
+
+- name: configuration
+  ansible.builtin.template:
+    src: elasticsearch.yml.j2
+    dest: "{{ ES_INSTALL_PATH }}/elasticsearch.yml"
+    mode: 0644
+    owner: "{{ user_name}}"
+    group: "{{ group_name}}"
+    force: true
+    backup: true
+
+- name: extra jvm options (heap settings)
+  ansible.builtin.template:
+    src: jvm.options.j2
+    dest: "{{ ES_INSTALL_PATH }}/jvm.options"
+    mode: 0644
+    owner: "{{ user_name}}"
+    group: "{{ group_name}}"
+    force: true
+    backup: true
+
+
+- name: rename server cert files
+  ansible.builtin.shell:
+    cmd: "cp {{ certificate_path }}/{{ inventory_hostname }}.crt node.crt \
+          && \
+          cp {{ certificate_path }}/{{ inventory_hostname }}.key node.key \
+          && \
+          cp {{ certificate_path }}/ca.crt ca.crt"
+    chdir: "{{ ES_INSTALL_PATH }}"
+
+- name: Set file permissions for key
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: file
+    mode: 0750
+    owner: "{{ user_name }}"
+    group: "{{ group_name }}"
+    force: true
+  loop:
+    - "{{ ES_INSTALL_PATH }}/node.key"
+    - "{{ ES_INSTALL_PATH }}/node.crt"
+    - "{{ ES_INSTALL_PATH }}/ca.crt"
+  become: yes
+
+
+- name: Start and enable elasticsearch service
+  ansible.builtin.systemd:
+    name: elasticsearch
+    state: restarted
+    daemon_reload: yes
+    enabled: yes
+  become: yes
+
+- name: silently install backup snapshot gcs storage plugin
+  ansible.builtin.shell: /usr/share/elasticsearch/bin/elasticsearch-plugin install repository-gcs -b
+  args:
+    creates: /usr/share/elasticsearch/plugins/repository-gcs
+
+- name: restart elasticsearch service after installing plugin
+  ansible.builtin.systemd:
+    name: elasticsearch
+    state: restarted
+  become: yes
+
+- name: create backup repository in gcs
+  ansible.builtin.uri:
+    url: "http://localhost:9200/_snapshot/gcs_backup_{{ instana_environment }}?pretty"
+    method: PUT
+    body: {"type": "gcs","settings": {"bucket": "rewe-instana-elasticsearch-{{ instana_environment }}"}}
+    body_format: json
+  run_once: yes
+
+- name: create backup schedule
+  ansible.builtin.uri:
+    url: "http://localhost:9200/_slm/policy/nightly-snapshots?pretty"
+    method: PUT
+    body: "{\"schedule\": \"0 00 00 * * ?\", \"name\": \"<nightly-snap-{now/d}>\",	\"repository\": \"gcs_backup_{{ instana_environment }}\", \"config\": {\"indices\": \"onprem*\", \"include_global_state\": false, \"retention\": {\"expire_after\": \"7d\", \"min_count\": 1, \"max_count\": 6 } } }"
+    body_format: json
+  run_once: yes
+
+- name: Set time when SLM retention should run
+  ansible.builtin.uri:
+    url: "http://localhost:9200/_cluster/settings"
+    method: PUT
+    body: "{ \"persistent\" : { \"slm.retention_schedule\": \"0 0 4 * * ?\" , \"slm.retention_duration\": \"2h\" } }"
+    body_format: json
+  run_once: yes
+
+- name: verify cluster is up and running
+  ansible.builtin.uri:
+    url: "http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=50s&pretty"
+    method: GET
+    status_code: [200,201,401]
+    validate_certs: false
+    user: validate
+  retries: 30
+  delay: 10
+  until: cluster_health.json.status|lower == 'green'
+  register: cluster_health
+
+
+- name: cluster health
+  ansible.builtin.debug:
+    msg:
+      - "{{ cluster_health.json }}"
+  failed_when: cluster_health.json.status|lower != "green"

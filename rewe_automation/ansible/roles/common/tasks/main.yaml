@@ -1,0 +1,38 @@
+---
+# This playbook contains common plays that will be run on all nodes.
+- name: Add an Apt signing key, uses whichever key is at the URL
+  ansible.builtin.apt_key:
+        url: https://packages.instana.io/Instana.gpg
+        state: present
+
+- name: Add specified repository into sources list
+  ansible.builtin.apt_repository:
+        repo: deb [arch=amd64] https://_:rduaqpY6S5aye23i0TrK7g@packages.instana.io/release/distonprem/deb generic main
+        state: present
+        filename: instana-distonprem.list
+        update_cache: yes
+
+- name: Create a group
+  become: yes
+  group:
+    name: instana
+    state: present
+
+- name: Create an user
+  become: yes
+  user:
+    name: instana
+    state: present
+    group: instana
+
+- name: Install jre
+  apt:
+      name: instana-jre-11
+      state: present
+
+- name: Set JAVA_HOME
+  lineinfile:
+      dest: /etc/environment
+      state: present
+      regexp: '^JAVA_HOME'
+      line: 'JAVA_HOME=/opt/instana/jre11/'

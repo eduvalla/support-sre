@@ -1,0 +1,8 @@
+apiVersion: cert-manager.io/v1
+kind: {{ .Values.issuerKind }}
+metadata:
+  name: {{- include "issuer.fullname" . | nindent 4 }}
+  labels:
+    {{- include "issuer.labels" . | nindent 4 }}
+spec:
+  {{- toYaml .Values.spec | nindent 2 }}

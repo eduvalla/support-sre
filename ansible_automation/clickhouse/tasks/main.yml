@@ -1,0 +1,132 @@
+---
+- name: "create group {{ group_name }}"
+  ansible.builtin.group:
+    name: "{{ group_name }}"
+    state: present
+
+- name: "create user {{ user_name }}"
+  ansible.builtin.user:
+    name: "{{ user_name }}"
+    state: present
+    createhome: false
+    group: "{{ group_name }}"
+
+
+- name: create clickhouse data directories
+  ansible.builtin.file:
+    path: '{{ ROOT_MOUNT }}/{{ item }}/'
+    state: directory
+    owner: "{{ user_name }}"
+    group: "{{ group_name }}"
+    mode: 0775
+  loop:
+    - data
+    - logs
+    - backups
+
+- name: Create clickhouse auxiliary directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ user_name }}"
+    group: "{{ group_name }}"
+    mode: 0775
+  loop:
+    - "/opt/clickhouse"
+    - "/var/log/clickhouse-backup"
+
+- name: Install jq and pip (required for restore)
+  ansible.builtin.apt:
+    name: "{{ item }}"
+    allow_unauthenticated: yes
+    update_cache: yes
+  loop:
+    - python3-pip
+    - jq
+  become: yes
+
+- name: Install kazoo pip package
+  ansible.builtin.pip:
+    name: kazoo
+  become: yes
+
+- name: Install package
+  ansible.builtin.apt:
+    name: clickhouse-server
+    allow_unauthenticated: yes
+    update_cache: yes
+  register: apt_update
+  until: apt_update is success
+
+- name: include configuration file - Create the configuration xml file
+  include_tasks: configure.yml
+
+- name: configuration - users
+  ansible.builtin.template:
+    src: users.xml.j2
+    dest: "{{ clickhouse_install_path }}/users.xml"
+    mode: 0644
+    owner: "{{ user_name }}"
+    group: "{{ group_name }}"
+    force: true
+    backup: true
+
+- name: Start and enable clickhouse-server service
+  ansible.builtin.systemd:
+    name: clickhouse-server
+    state: restarted
+    daemon_reload: yes
+    enabled: yes
+  become: yes
+
+- name: validate installation
+  ansible.builtin.shell: "clickhouse-client -q 'select 1'"
+  retries: 5
+  delay: 10
+  until: validate.rc == 0
+  register: validate
+
+- ansible.builtin.debug:
+    msg:
+      - "validate output: {{ validate }}"
+    verbosity: 2
+
+- name: Check if Data Disk Snapshot policy needs to be created
+  ansible.builtin.shell:
+    cmd: |
+      gcloud compute resource-policies list \
+      --filter="region:( {{ region }} )" \
+      --project={{ project }} | grep clickhouse-{{ instana_environment }}
+  run_once: yes
+  delegate_to: localhost
+  register: resource_policies
+  failed_when: false
+
+- name: create a Data Disk Snapshot policy
+  ansible.builtin.shell:
+    cmd: |
+      gcloud compute resource-policies create snapshot-schedule clickhouse-{{ instana_environment }} \
+      --daily-schedule \
+      --start-time=00:00 \
+      --max-retention-days=7 \
+      --region={{ region }} \
+      --project={{ project }}
+  delegate_to: localhost
+  run_once: yes
+  become: yes
+  # Only create the resource policy if it does not exist yet
+  when: resource_policies.rc == 1
+
+- name: "Attach Clickhouse data disks to snapshot policy"
+  ansible.builtin.shell:
+    cmd: |
+      gcloud compute disks add-resource-policies {{ instana_environment }}-clickhouse-data-{{ host_index }} \
+      --resource-policies=clickhouse-{{ instana_environment }} \
+      --zone={{ zone }} \
+      --project={{ project }}
+  delegate_to: localhost
+  become: yes
+  run_once: yes
+  loop: "{{ ansible_play_hosts_all }}"
+  loop_control:
+    index_var: host_index

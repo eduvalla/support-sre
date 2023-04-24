@@ -1,0 +1,39 @@
+- name: generate certs
+  include_tasks: generate-certs-jks-all.yml
+  run_once: yes
+
+
+- name: make sure directory exists
+  ansible.builtin.file:
+    path: "{{ node_certificate_path }}"
+    state: directory
+
+
+- ansible.builtin.set_fact:
+    cert_host: "{{ cert_host | default([]) + [ ansible_host ] }}"
+
+- name: copy ca root cert to other servers
+  ansible.builtin.copy:
+    src: "{{ certificate_path }}/{{ item }}"
+    dest: "{{ node_certificate_path }}/{{ item }}"
+    mode: 0755
+    force: yes
+  loop:
+    - "{{ root_ca_cert_name }}"
+    - "{{ sub_ca_cert_name }}"
+    - truststore.jks
+
+- name: copy certs to all nodes
+  ansible.builtin.copy:
+    src: "{{ certificate_path}}/{{ item[0] }}.{{ item[1] }}"
+    dest: "{{ node_certificate_path }}/{{ item[0] }}.{{ item[1] }}"
+    mode: 0755
+    force: yes
+  loop: "{{ cert_host | product(['key','crt','jks']) }}"
+
+- name: clean up on AC
+  ansible.builtin.file:
+    path: /tmp/certs
+    state: absent
+  delegate_to: 127.0.0.1
+  run_once: yes

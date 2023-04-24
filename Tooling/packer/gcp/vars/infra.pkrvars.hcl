@@ -1,0 +1,7 @@
+project_id     = "instana-internal"
+network        = "instana-infra"
+zone           = "us-east1-b"
+subnetwork     = "instana-infra-public"
+instana_region = "instana-infra"
+apt_state      = "us"
+apt_region     = "us-west-2"

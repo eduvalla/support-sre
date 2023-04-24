@@ -1,0 +1,16 @@
+[Unit]
+Description=Cockroach Database cluster node
+Requires=network.target
+[Service]
+Type=notify
+WorkingDirectory=/var/lib/cockroach
+ExecStart=/usr/local/bin/cockroach start --insecure --certs-dir={{ certificate_path }} --advertise-addr={{ ansible_host }} --join={% for host in groups[group_names[0]]%}{{ host }}{% if not loop.last %},{% endif %}{% endfor%} --cache=.25 --max-sql-memory=.25 --listen-addr={{ ansible_host }}:26257 --http-addr={{ ansible_host }}:8081 --store=/mnt/data --log-dir=/mnt/logs
+TimeoutStopSec=60
+Restart=always
+RestartSec=10
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=cockroach
+User={{ user_name }}
+[Install]
+WantedBy=default.target

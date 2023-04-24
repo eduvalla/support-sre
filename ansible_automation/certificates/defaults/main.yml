@@ -1,0 +1,17 @@
+certificate_path: /tmp/certs
+node_certificate_path: /mnt/certs
+
+user_name: root
+group_name: root
+
+google_cas_root_pool_name: instana-{{ instana_environment }}-ca-root-pool
+google_cas_root_ca_name: instana-{{ instana_environment }}-root
+google_cas_sub_pool_name: instana-{{ instana_environment }}-ca-sub-pool
+google_cas_sub_ca_name: instana-{{ instana_environment }}-sub
+gcp_location: "{{ region }}"
+
+default_keystore_pass: passw0rd
+default_truststore_pass: passw0rd
+
+sub_ca_cert_name: ca.crt
+root_ca_cert_name: root-ca.crt

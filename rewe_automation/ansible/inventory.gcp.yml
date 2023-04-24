@@ -1,0 +1,5 @@
+plugin: gcp_compute
+projects:
+  - instana-solution-architects
+auth_kind: serviceaccount
+service_account_file: /Users/jparker/gcp_sa.json

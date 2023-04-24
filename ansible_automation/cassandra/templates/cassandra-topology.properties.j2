@@ -1,0 +1,3 @@
+{% for cassandra_host in ansible_play_hosts_all %}
+{{cassandra_host}}=dc1:rac1
+{% endfor %}

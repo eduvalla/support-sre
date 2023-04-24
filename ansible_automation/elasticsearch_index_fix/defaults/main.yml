@@ -1,0 +1,15 @@
+---
+#TODO: change the names to match the customer tu/u
+index_templates:
+  - onprem-percolator-template
+  - events-es7-template-onprem-rewe-prod
+  - events-es7-template-onprem-rewe-nonprod
+  - onprem-snapshots-template
+  - search-snapshot-template-onprem-rewe-prod
+  - search-snapshot-template-onprem-rewe-nonprod
+
+indices:
+  - onprem_*_percolator
+  - onprem_*_events_es7_*
+  - onprem_*_search_*
+  - onprem_*_snapshots

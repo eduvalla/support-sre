@@ -1,0 +1,26 @@
+---
+- name: Update Index templates
+  ansible.builtin.uri:
+    url: "http://localhost:9200/_template/{{ item }}"
+    body: "{{ lookup('ansible.builtin.template', item + '.json.j2') }}"
+    body_format: json
+    method: "PUT"
+    follow_redirects: all
+    force: true
+    status_code: [200, 201]
+    user: validate
+    validate_certs: false
+  loop: "{{ index_templates }}"
+  run_once: true
+
+#- name: Delete old indices
+#  ansible.builtin.uri:
+#    url: "http://localhost:9200/{{ item }}"
+#    method: "DELETE"
+#    follow_redirects: all
+#    force: true
+#    status_code: [200, 201]
+#    user: validate
+#    validate_certs: false
+#  loop: "{{ indices }}"
+#  run_once: true

@@ -1,0 +1,33 @@
+---
+- hosts: kafka
+  become: yes
+  tasks:
+  - name: Install package
+    apt:
+      name: kafka
+      state: present
+
+  - name: Start and enable kafka service
+    ansible.builtin.service:
+      name: kafka
+      state: started
+      enabled: yes
+    become: yes
+
+  - name: Validating if zookeeper is up and listening on port 2181
+    wait_for:
+      host: localhost
+      port: 2181
+      delay: 10
+      timeout: 30
+      state: started
+      msg: "Zookeeper does not seem to be running"
+
+  - name: Validating if Kafka is up and listening on port 2181
+    wait_for:
+      host: localhost
+      port: 9092
+      delay: 10
+      timeout: 30
+      state: started
+      msg: "Kafka does not seem to be running"

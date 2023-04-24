@@ -1,0 +1,5 @@
+region = "eu-west-1"
+vpc = "vpc-eb73c08f"
+source_ami = "ami-00035f41c82244dab"
+security_group = "sg-94e1b9f3"
+subnet = "subnet-10039f74"

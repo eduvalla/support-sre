@@ -1,0 +1,26 @@
+- name: Generate client certificates - users
+  ansible.builtin.shell:
+    cmd: "gcloud privateca certificates create \
+          servercrt-{{ inventory_hostname | replace('.', '-') }}-{{ 10000 | random }} \
+          --issuer-pool {{ google_cas_sub_pool_name }} \
+          --issuer-location {{ gcp_location }} \
+          --generate-key \
+          --key-output-file {{ certificate_path }}/client.{{ item }}.key \
+          --cert-output-file {{ certificate_path }}/client.{{ item }}.crt \
+          --ip-san '{{ ansible_host }}' \
+          --subject 'CN={{ item }}' \
+          --validity 'P1000D'"
+  become: yes
+  loop: "{{ client_id_list }}"
+   
+
+- name: Set file permissions for key - users
+  ansible.builtin.file:
+    path: "{{ certificate_path }}/client.{{ item[0] }}.{{ item[1] }}"
+    state: file
+    mode: 0700
+    owner: "{{ user_name }}"
+    group: "{{ group_name }}"
+    force: true
+  loop: "{{ client_id_list | product(['key','crt']) }}"
+  become: yes

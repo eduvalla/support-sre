@@ -1,0 +1,149 @@
+{
+  "order": 0,
+  "index_patterns": [
+    "*events_es7_*"
+  ],
+  "settings": {
+    "index": {
+      "lifecycle": {
+        "name": "events"
+      },
+      "number_of_shards": "5",
+      "number_of_replicas": "1"
+    }
+  },
+  "mappings": {
+    "_meta": {
+      "setting_version": "220.0",
+      "mapping_version": "199.0"
+    },
+    "dynamic": false,
+    "properties": {
+      "metadata": {
+        "properties": {
+          "entityLabel": {
+            "type": "keyword"
+          },
+          "endpointIds": {
+            "type": "keyword"
+          },
+          "k8sNamespace": {
+            "fields": {
+              "sort": {
+                "type": "keyword"
+              }
+            },
+            "type": "text"
+          },
+          "k8sName": {
+            "fields": {
+              "sort": {
+                "type": "keyword"
+              }
+            },
+            "type": "text"
+          },
+          "serviceIds": {
+            "type": "keyword"
+          },
+          "websiteId": {
+            "type": "keyword"
+          },
+          "eventSpecificationId": {
+            "type": "keyword"
+          },
+          "pageIds": {
+            "type": "keyword"
+          },
+          "entityName": {
+            "type": "keyword"
+          },
+          "triggeringTime": {
+            "type": "long"
+          },
+          "k8sEventType": {
+            "fields": {
+              "sort": {
+                "type": "keyword"
+              }
+            },
+            "type": "text"
+          },
+          "k8sKind": {
+            "fields": {
+              "sort": {
+                "type": "keyword"
+              }
+            },
+            "type": "text"
+          },
+          "applicationId": {
+            "type": "keyword"
+          },
+          "queryEntityLabel": {
+            "type": "keyword"
+          }
+        }
+      },
+      "problem": {
+        "properties": {
+          "severity": {
+            "type": "long"
+          },
+          "fixSuggestion": {
+            "fields": {
+              "raw": {
+                "type": "keyword"
+              }
+            },
+            "type": "text"
+          },
+          "pluginId": {
+            "type": "keyword"
+          },
+          "problemText": {
+            "fields": {
+              "keyword": {
+                "type": "keyword"
+              }
+            },
+            "type": "text"
+          },
+          "explanation": {
+            "type": "text"
+          }
+        }
+      },
+      "appDataId": {
+        "type": "keyword"
+      },
+      "triggeringTime": {
+        "type": "long"
+      },
+      "eventmode": {
+        "type": "keyword"
+      },
+      "start": {
+        "type": "long"
+      },
+      "end": {
+        "type": "long"
+      },
+      "eventtype": {
+        "type": "keyword"
+      },
+      "state": {
+        "type": "keyword"
+      },
+      "affectedEntities": {
+        "type": "keyword"
+      },
+      "eumId": {
+        "type": "keyword"
+      }
+    }
+  },
+  "aliases": {
+    "onprem_rewe_prod_events_es7": {}
+  }
+}

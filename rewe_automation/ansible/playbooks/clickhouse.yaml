@@ -1,0 +1,15 @@
+---
+- hosts: clickhouse
+  become: yes
+  tasks:
+  - name: Install package
+    apt:
+      name: clickhouse
+      state: present
+
+  - name: Start and enable clickhouse service
+    ansible.builtin.service:
+      name: clickhouse
+      state: started
+      enabled: yes
+    become: yes

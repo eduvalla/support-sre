@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+
+# Get all keyspaces and have one per line
+keyspaces=$(cqlsh -e 'DESCRIBE KEYSPACES' | tr ' ' '\n' | grep -v '^\s*$' | grep -v '^.*system.*')
+
+for keyspace in $keyspaces; do
+  # Get all tables per keyspace
+  tables=$(cqlsh -e "USE ${keyspace}; DESCRIBE TABLES" | tr ' ' '\n' | grep -v '^\s*$' )
+
+  for table in $tables; do
+    # Truncate all tables that are being restored later - if tables are not truncated, weird effects can occur
+    echo "Truncating ${keyspace}.${table}"
+    cqlsh -e "TRUNCATE TABLE ${keyspace}.${table}"
+  done
+done
+
+
+

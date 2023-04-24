@@ -1,0 +1,45 @@
+core:
+  apiVersion: v1beta1
+  baseDomain: ""
+  dataStoreHost: ""
+  emailconfig: {}
+  imageConfig: {}
+  imagePullSecrets:
+    - name: instana-registry
+  rawSpansStorageConfig: {}
+  resourceProfile: small
+  serviceProviderConfig: {}
+  featureFlags: []
+  serviceAccountAnnotations: {}
+services:
+  - nameSuffix: ""
+    type: ClusterIP
+    loadBalancerIP: ""
+    ports: []
+    selectorLabels: {}
+    annotations: {}
+
+secret:
+  name: ""
+  adminPassword: ""
+  dhParams: ""
+  downloadKey: ""
+  salesKey: ""
+  tokenSecret: ""
+  license: "" # v1beta1 only
+  rawSpansStorageConfig:
+    s3Config:
+      accessKeyId: ""
+      secretAccessKey: ""
+    gcloudConfig:
+      serviceAccountKey: ""
+  serviceProviderConfig:
+    keyPassword: ""
+    pem: ""
+
+legacy:
+  keep: true
+  rawSpansStorageConfig:
+    objectStorageConfig:
+      accessKeyId: ""
+      secretAccessKey: ""

@@ -1,0 +1,7 @@
+project_id = "instana-production"
+network = "instana-coral"
+zone = "us-west1-c"
+subnetwork = "instana-coral-private"
+instana_region = "coral"
+apt_state = "us"
+apt_region = "us-west-2"

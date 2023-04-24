@@ -1,0 +1,104 @@
+{
+    "order" : 0,
+    "index_patterns" : [
+      "*_search_*"
+    ],
+    "settings" : {
+      "index" : {
+        "lifecycle" : {
+          "name" : "search_snapshots"
+        },
+        "search" : {
+          "slowlog" : {
+            "threshold" : {
+              "fetch" : {
+                "warn" : "500ms",
+                "debug" : "100ms",
+                "info" : "200ms"
+              },
+              "query" : {
+                "warn" : "2s",
+                "debug" : "250ms",
+                "info" : "500ms"
+              }
+            }
+          }
+        },
+        "indexing" : {
+          "slowlog" : {
+            "threshold" : {
+              "index" : {
+                "warn" : "2s",
+                "debug" : "250ms",
+                "info" : "500ms"
+              }
+            }
+          }
+        },
+        "number_of_shards" : "5",
+        "max_result_window" : "325000",
+        "analysis" : {
+          "analyzer" : {
+            "lowercasekeywordanalyzer" : {
+              "filter" : [
+                "lowercase"
+              ],
+              "type" : "custom",
+              "tokenizer" : "keyword"
+            }
+          }
+        },
+        "number_of_replicas" : "1"
+      }
+    },
+    "mappings" : {
+      "_meta" : {
+        "setting_version" : "220.0",
+        "mapping_version" : "203.0"
+      },
+      "dynamic" : true,
+      "dynamic_templates" : [
+        {
+          "match_search_strings" : {
+            "unmatch" : "snapshot_id",
+            "mapping" : {
+              "copy_to" : "_all",
+              "analyzer" : "lowercasekeywordanalyzer",
+              "type" : "text"
+            },
+            "match_mapping_type" : "string"
+          }
+        }
+      ],
+      "properties" : {
+        "physical_ref_id_search" : {
+          "index" : true,
+          "type" : "keyword"
+        },
+        "snapshot_id" : {
+          "index" : true,
+          "type" : "keyword"
+        },
+        "plugin_id_search" : {
+          "normalizer" : "lowercase",
+          "index" : true,
+          "type" : "keyword"
+        },
+        "related_entities" : {
+          "index" : true,
+          "type" : "keyword"
+        },
+        "_all" : {
+          "index" : true,
+          "type" : "text"
+        },
+        "timestamp" : {
+          "type" : "long"
+        }
+      }
+    },
+    "aliases" : {
+      "onprem_rewe_nonprod_search" : { }
+    }
+
+}

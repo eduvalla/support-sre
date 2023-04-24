@@ -1,0 +1,25 @@
+[Unit]
+Description=kafka Daemon
+Documentation=
+Requires=network.target
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory={{ installation_path }}
+User=kafka
+Group=kafka
+ExecStart={{ installation_path }}/bin/kafka-server-start.sh {{ installation_path }}/config/server.properties
+ExecStop={{ installation_path }}/bin/kafka-server-stop.sh {{ installation_path }}/config/server.properties
+ExecReload={{ installation_path }}/bin/kafka-server-start.sh {{ installation_path }}/config/server.properties
+Environment="KAFKA_HEAP_OPTS=-Xmx16G -Xms16G"
+Environment="KAFKA_OPTS=-Djava.net.preferIPv4Stack=true"
+
+#TimeoutSec=600
+#TimeoutStartUSec=3min
+#TimeoutStopUSec=3min
+Restart=on-failure
+
+
+[Install]
+WantedBy=default.target

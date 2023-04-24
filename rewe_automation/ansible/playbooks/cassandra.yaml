@@ -1,0 +1,15 @@
+---
+- hosts: cassandra
+  become: yes
+  tasks:
+  - name: Install package
+    apt:
+      name: cassandra
+      state: present
+
+  - name: Start and enable cassandra service
+    ansible.builtin.service:
+      name: cassandra
+      state: started
+      enabled: yes
+    become: yes

@@ -1,0 +1,5 @@
+region = "us-west-2"
+vpc = "vpc-851349e1"
+source_ami = "ami-0bbe6b35405ecebdb"
+security_group = "sg-71341f17"
+subnet = "subnet-6c7d1d1a"

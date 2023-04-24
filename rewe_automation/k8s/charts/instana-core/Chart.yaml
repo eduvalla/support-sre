@@ -1,0 +1,5 @@
+apiVersion: v2
+name: instana-core
+description: A Helm chart for setting up an Instana core
+type: application
+version: 0.1.0

@@ -1,0 +1,119 @@
+{
+    "order" : 0,
+    "index_patterns" : [
+      "*_percolator"
+    ],
+    "settings" : {
+      "index" : {
+        "number_of_shards" : "5",
+        "number_of_replicas" : "1"
+      }
+    },
+    "mappings" : {
+      "_meta" : {
+        "drop_index_versions" : [
+          "216.0"
+        ],
+        "mapping_version" : "216.0"
+      },
+      "dynamic" : false,
+      "properties" : {
+        "metadata" : {
+          "properties" : {
+            "entityLabel" : {
+              "type" : "keyword"
+            },
+            "endpointIds" : {
+              "type" : "keyword"
+            },
+            "k8sNamespace" : {
+              "type" : "text"
+            },
+            "k8sName" : {
+              "type" : "text"
+            },
+            "serviceIds" : {
+              "type" : "keyword"
+            },
+            "websiteId" : {
+              "type" : "keyword"
+            },
+            "eventSpecificationId" : {
+              "type" : "keyword"
+            },
+            "pageIds" : {
+              "type" : "keyword"
+            },
+            "entityName" : {
+              "type" : "keyword"
+            },
+            "triggeringTime" : {
+              "type" : "long"
+            },
+            "k8sEventType" : {
+              "type" : "text"
+            },
+            "k8sKind" : {
+              "type" : "text"
+            },
+            "applicationId" : {
+              "type" : "keyword"
+            },
+            "queryEntityLabel" : {
+              "type" : "keyword"
+            }
+          }
+        },
+        "problem" : {
+          "properties" : {
+            "severity" : {
+              "type" : "long"
+            },
+            "fixSuggestion" : {
+              "type" : "text"
+            },
+            "pluginId" : {
+              "type" : "keyword"
+            },
+            "problemText" : {
+              "type" : "text"
+            },
+            "explanation" : {
+              "type" : "text"
+            }
+          }
+        },
+        "appDataId" : {
+          "type" : "keyword"
+        },
+        "triggeringTime" : {
+          "type" : "long"
+        },
+        "eventmode" : {
+          "type" : "keyword"
+        },
+        "query" : {
+          "type" : "percolator"
+        },
+        "start" : {
+          "type" : "long"
+        },
+        "end" : {
+          "type" : "long"
+        },
+        "eventtype" : {
+          "type" : "keyword"
+        },
+        "state" : {
+          "type" : "keyword"
+        },
+        "affectedEntities" : {
+          "type" : "keyword"
+        },
+        "eumId" : {
+          "type" : "keyword"
+        }
+      }
+    },
+    "aliases" : { }
+  }

@@ -1,0 +1,70 @@
+ {
+    "order" : 0,
+    "index_patterns" : [
+      "*_snapshots"
+    ],
+    "settings" : {
+      "index" : {
+        "lifecycle" : {
+          "name" : "snapshots"
+        },
+        "max_result_window" : "325000",
+        "number_of_shards" : "10",
+        "number_of_replicas" : "1"
+      }
+    },
+    "mappings" : {
+      "_meta" : {
+        "setting_version" : "220.0",
+        "mapping_version" : "198.0"
+      },
+      "dynamic" : false,
+      "properties" : {
+        "plugin_id" : {
+          "type" : "keyword"
+        },
+        "steady_id" : {
+          "type" : "keyword"
+        },
+        "data" : {
+          "enabled" : false
+        },
+        "snapshot_id" : {
+          "type" : "keyword"
+        },
+        "metric_ids" : {
+          "index" : false,
+          "type" : "keyword"
+        },
+        "from" : {
+          "type" : "long"
+        },
+        "volatile_id" : {
+          "properties" : {
+            "entity_id" : {
+              "type" : "keyword"
+            },
+            "host_id" : {
+              "type" : "keyword"
+            },
+            "sensor_name" : {
+              "type" : "keyword"
+            }
+          }
+        },
+        "to" : {
+          "type" : "long"
+        },
+        "client_id" : {
+          "type" : "keyword"
+        },
+        "host_id" : {
+          "type" : "keyword"
+        },
+        "timestamp" : {
+          "type" : "long"
+        }
+      }
+    },
+    "aliases" : { }
+  }

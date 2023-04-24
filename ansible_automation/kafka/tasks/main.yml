@@ -1,0 +1,118 @@
+---
+- name: "create group {{ group_name }}"
+  ansible.builtin.group:
+    name: "{{ group_name }}"
+    state: present
+
+- name: "create user {{ user_name }}"
+  ansible.builtin.user:
+    name: "{{ user_name }}"
+    state: present
+    createhome: false
+    group: "{{ group_name }}"
+
+
+- name: create kafka data directories
+  ansible.builtin.file:
+    path: '{{ item }}/kafka'
+    state: directory
+    owner: "{{ user_name }}"
+    group: "{{ group_name }}"
+    mode: 0775
+  loop: "{{ datastore_directories }}"
+
+- name: install prereqs
+  become: yes
+  ansible.builtin.apt:
+    name: "{{ item }}"
+  loop:
+    - unzip
+
+- name: create target directory
+  ansible.builtin.file:
+    path: "{{ installation_path }}"
+    mode: 0775
+    owner: "{{ user_name }}"
+    group: "{{ group_name }}"
+    state: directory
+
+- name: Download gz from ar
+  shell:
+    cmd: "gsutil cp gs://{{ artifactRegistry.repository_generic }}/{{ artifactRegistry.kafka_package }} /tmp/"
+  register: download
+  until: download is succeeded
+  retries: 10
+  delay: 30
+
+- name: unarchive kafka package
+  ansible.builtin.unarchive:
+    src: "/tmp/{{ artifactRegistry.kafka_package }}"
+    dest: /tmp
+    owner: "{{ user_name }}"
+    group: "{{ group_name }}"
+    remote_src: yes
+
+- name: find the kafka packed dir in tmp
+  ansible.builtin.find:
+    paths: /tmp
+    pattern: 'kafka*'
+    file_type: directory
+  register: kafka_unpacked
+
+- ansible.builtin.debug:
+    msg:
+      - "{{ item.path }}"
+    verbosity: 3
+  loop: "{{ kafka_unpacked.files }}"
+
+
+- name: move / copy
+  ansible.builtin.copy:
+    directory_mode: yes
+    remote_src: yes
+    src: "{{ item.path }}/"
+    dest: "{{ installation_path }}"
+    owner: "{{ user_name }}"
+    group: "{{ group_name }}"
+    mode: a+x
+  loop: "{{ kafka_unpacked.files }}"
+
+- name: create additional kafka settings
+  ansible.builtin.template:
+    src: server.properties.j2
+    dest: "{{ installation_path }}/config/server.properties"
+    mode: 0644
+    owner: "{{ user_name }}"
+    group: "{{ group_name }}"
+    backup: true
+    force: yes
+
+- name: create kafka service
+  ansible.builtin.template:
+    src: kafka.service.j2
+    dest: /etc/systemd/system/kafka.service
+    owner: root
+    group: root
+    mode: 0644
+    force: yes
+
+- name: set correct ownership on keystore files
+  ansible.builtin.file:
+    path: "{{ certificate_path }}/{{ item }}"
+    state: file
+    mode: 0700
+    owner: "{{ user_name }}"
+    group: "{{ group_name}}"
+    force: true
+  become: yes
+  loop:
+    - truststore.jks
+    - "{{ inventory_hostname}}.jks"
+
+- name: Start and enable kafka service
+  ansible.builtin.systemd:
+    name: kafka
+    state: restarted
+    daemon_reload: yes
+    enabled: yes
+  become: yes

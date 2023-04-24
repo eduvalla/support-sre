@@ -1,0 +1,101 @@
+- name: clean up certs on cert generation node
+  ansible.builtin.file:
+    path: "{{ certificate_path }}"
+    state: absent
+  delegate_to: 127.0.0.1
+
+
+- name: create directory for certificates
+  ansible.builtin.file:
+    path: "{{ certificate_path }}"
+    state: directory
+    owner: "{{ user_name }}"
+    group: "{{ group_name }}"
+    mode: 0775
+  delegate_to: 127.0.0.1
+
+- name: Get root CA certificates from Google
+  ansible.builtin.shell:
+    cmd: "gcloud privateca roots describe {{ google_cas_root_ca_name }} \
+          --location={{ gcp_location }} \
+          --pool {{ google_cas_root_pool_name }} \
+          --format='value[delimiter=\\n](pemCaCertificates)' > {{ root_ca_cert_name }}"
+    chdir: "{{ certificate_path }}"
+  delegate_to: 127.0.0.1
+
+- name: Get subordinate CA certificates from Google
+  ansible.builtin.shell:
+    cmd: "gcloud privateca subordinates describe {{ google_cas_sub_ca_name }} \
+          --location={{ gcp_location }} \
+          --pool {{ google_cas_sub_pool_name }} \
+          --format='value[delimiter=\\n](pemCaCertificates)' > {{ sub_ca_cert_name }}"
+    chdir: "{{ certificate_path }}"
+  delegate_to: 127.0.0.1
+
+- name: Import trusted CA from Google to truststore
+  community.general.java_cert:
+    cert_path: "{{ certificate_path }}/{{ item.cert_name }}"
+    keystore_path: "{{ certificate_path }}/truststore.jks"
+    keystore_pass: "{{ default_truststore_pass }}"
+    keystore_create: yes
+    state: present
+    cert_alias: "{{ item.alias }}"
+    trust_cacert: True
+  loop:
+    - { cert_name: '{{ sub_ca_cert_name }}', alias: 'subca' }
+    - { cert_name: '{{ root_ca_cert_name }}', alias: 'rootca' }
+  delegate_to: 127.0.0.1
+
+
+- name: Generate server certificates
+  ansible.builtin.shell:
+    cmd: "gcloud privateca certificates create \
+          servercrt-{{ item | replace('.', '-') }}-{{ 1000000 | random }} \
+          --issuer-pool {{ google_cas_sub_pool_name }} \
+          --issuer-location {{ gcp_location }} \
+          --generate-key \
+          --key-output-file {{ certificate_path }}/{{ item }}.key \
+          --cert-output-file {{ certificate_path }}/{{ item }}.crt \
+          --ip-san '{{ item }}' \
+          --subject 'CN={{ item }}' \
+          --validity P1000D"
+  loop: "{{ ansible_play_hosts_all }}"
+  delegate_to: 127.0.0.1
+
+- name: Generate server certificates - cockroach
+  ansible.builtin.shell:
+    cmd: "gcloud privateca certificates create \
+          servercrt-{{ item | replace('.', '-') }}-{{ 1000000 | random }} \
+          --issuer-pool {{ google_cas_sub_pool_name }} \
+          --issuer-location {{ gcp_location }} \
+          --generate-key \
+          --key-output-file {{ certificate_path }}/{{ item }}.key \
+          --cert-output-file {{ certificate_path }}/{{ item }}.crt \
+          --ip-san '{{ item }}' \
+          --subject 'CN=node' \
+          --validity P1000D"
+  loop: "{{ ansible_play_hosts_all }}"
+  when: "('cockroachdb' in groups) and (item in groups['cockroachdb'])"
+  delegate_to: 127.0.0.1
+
+- name: Create a keystore for the given certificate/private key pair
+  community.general.java_keystore:
+      name: server_pair
+      certificate_path: "{{ certificate_path }}/{{ item }}.crt"
+      private_key_path: "{{ certificate_path }}/{{ item }}.key"
+      password: "{{ default_keystore_pass }}"
+      dest: "{{ certificate_path }}/{{ item }}.jks"
+  loop: "{{ ansible_play_hosts_all }}"
+  delegate_to: 127.0.0.1
+
+# - name: Import CA certicate from Google to server keystore
+#   community.general.java_cert:
+#     cert_path: "{{ certificate_path }}/{{ ca_cert_name }}"
+#     keystore_path: "{{ certificate_path }}/{{ item }}.jks"
+#     keystore_pass: "{{ default_truststore_pass }}"
+#     keystore_create: yes
+#     state: present
+#     cert_alias: CARoot
+#     trust_cacert: True
+#   loop: "{{ ansible_play_hosts_all }}"
+#   delegate_to: 127.0.0.1

@@ -1,0 +1,3 @@
+---
+instana_agent_mode: infra
+instana_agent_flavor: dynamic

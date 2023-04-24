@@ -1,0 +1,16 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{- include "certificate.fullname" . | nindent 4 }}
+  labels:
+    {{- include "certificate.labels" . | nindent 4 }}
+spec:
+  dnsNames:
+    {{- toYaml .Values.dnsNames | nindent 4 }}
+  issuerRef:
+    {{- toYaml .Values.issuerRef | nindent 4 }}
+  secretName: {{ .Values.secretName }}
+  {{- with .Values.secretTemplate }}
+  secretTemplate:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}

@@ -1,0 +1,15 @@
+---
+- hosts: cockroachdb
+  become: yes
+  tasks:
+  - name: Install package
+    apt:
+      name: cockroachdb
+      state: present
+
+  - name: Start and enable cockroachdb service
+    ansible.builtin.service:
+      name: cockroachdb
+      state: started
+      enabled: yes
+    become: yes

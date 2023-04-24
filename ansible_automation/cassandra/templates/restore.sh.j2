@@ -1,0 +1,80 @@
+#!/usr/bin/env bash
+
+cassandra_data_dir={{ data_directory }}
+bucket_name={{ bucket_name }}
+host=$(hostname)
+
+restore_table() {
+    # $1 = keyspace
+    # $2 = table
+    # $3 = backup_version
+
+    # Clear table content
+    rm -rf ${cassandra_data_dir}/${1}/${2}**/*
+
+    # Now copy the backup files into the right spot
+    gcloud storage cp -c -r ${3}${host}/${1}/${2}/* ${cassandra_data_dir}/${1}/${2}*
+
+    # Fix ownership of files
+    chown -R {{ user_name }}:{{ group_name }} ${cassandra_data_dir}/${1}
+}
+
+
+if [[ -z $1 ]] || [[ $1 == "LATEST" ]]
+then
+  backup_version=$(gsutil ls gs://${bucket_name} | grep -e ".*/[0-9][0-9]-[0-9][0-9]-[0-9][0-9]/$" | sort -r | head -n 1)
+else
+  backup_version=$(gsutil ls gs://${bucket_name}/$1)
+fi
+
+if ! gsutil ls ${backup_version}${host};
+then
+  echo "The requested backup version ${backup_version} is not provided for the host ${host}."
+  exit 1;
+else
+  echo "Restoring from ${backup_version}${host}"
+fi
+
+# Get all keyspaces and have one per line
+keyspaces=$(cqlsh -e 'DESCRIBE KEYSPACES' | tr ' ' '\n' | grep -v '^\s*$' | grep -v '^.*system.*')
+
+running_processes=0
+
+for keyspace in $keyspaces; do
+  # Get all tables per keyspace
+  tables=$(cqlsh -e "USE ${keyspace}; DESCRIBE TABLES" | tr ' ' '\n' | grep -v '^\s*$' )
+
+  echo "Stopping Cassandra for the restore"
+  systemctl stop cassandra
+
+  echo "Clearing Commitlog of Cassandra"
+  rm -rf ${cassandra_data_dir}/commitlog/*
+
+  for table in $tables; do
+
+    restore_table $keyspace $table $backup_version &
+    running_processes=$((running_processes+1))
+
+    # Allow a maximum of 5 copy jobs in the background in parallel. If those are busy wait for all to finish before starting new copy jobs
+    if [[ "$running_processes" -eq 5 ]]; then
+      echo "Waiting for ${running_processes} copy processes to finish"
+      wait
+      running_processes=0
+    fi
+  done
+
+  # Wait for all subprocesses to finish
+  wait
+
+  echo "Restarting Cassandra"
+  systemctl start cassandra
+
+  # wait for Cassandra to startup
+  echo "Waiting for Cassandra to finish the restart"
+  sleep 2m
+done
+
+systemctl restart cassandra
+
+
+

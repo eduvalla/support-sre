@@ -1,0 +1,5 @@
+apiVersion: v2
+name: instana-unit
+description: A Helm chart for setting up an Instana unit
+type: application
+version: 0.1.0

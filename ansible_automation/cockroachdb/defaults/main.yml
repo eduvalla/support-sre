@@ -1,0 +1,29 @@
+---
+insecure: false
+certificate_path: /mnt/certs
+
+user_name: cockroachdb
+group_name: cockroachdb
+
+client_id_list:
+  - root
+  - "{{ user_name }}"
+
+ROOT_MOUNT: /mnt
+
+datastore_directories:
+  - "{{ ROOT_MOUNT }}/data/"
+  - "{{ ROOT_MOUNT}}/logs/"
+
+google_cas_sub_pool_name: instana-{{ instana_environment }}-ca-sub-pool
+google_cas_sub_ca_name: instana-{{ instana_environment }}-sub
+gcp_location: "{{ region }}"
+
+crdb_port: 26257
+bucket_name: rewe-instana-cockroachdb-{{ instana_environment }}
+
+artifactRegistry:
+  repository_generic:
+  cockroach_package:
+  cockroach_version:
+

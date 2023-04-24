@@ -1,0 +1,26 @@
+{{- range .Values.services }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{- include "instana-core.fullname" $ | nindent 4 }}-{{ .nameSuffix }}
+  labels:
+    {{- include "instana-core.labels" $ | nindent 4 }}
+  {{- with .annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .type }}
+  {{- with .loadBalancerIP }}
+  loadBalancerIP: {{ . }}
+  {{- end }}
+  ports:
+    {{- toYaml .ports | nindent 4 }}
+  selector:
+  {{- if .selectorLabels }}
+    {{- toYaml .selectorLabels | nindent 4 }}
+  {{- else }}
+    {{- include "instana-core.selectorLabels" $ | nindent 4 }}
+  {{- end }}
+{{- end }}

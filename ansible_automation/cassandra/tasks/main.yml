@@ -1,0 +1,207 @@
+---
+- name: "create group {{ group_name }}"
+  ansible.builtin.group:
+    name: cassandra
+    state: present
+
+- name: "create user {{ user_name }}"
+  ansible.builtin.user:
+    name: "{{ user_name }}"
+    state: present
+    createhome: false
+    group: "{{ group_name }}"
+
+- name: create cassandra data directories
+  ansible.builtin.file:
+    path: '{{ data_directory }}/{{ item }}/'
+    state: directory
+    owner: "{{ user_name }}"
+    group: "{{ group_name }}"
+    mode: 0775
+  loop:
+    - data
+    - commitlog
+    - saved_caches
+    - hints
+
+- name: Create backup script directory
+  ansible.builtin.file:
+    path: "{{ backup_script_dir }}"
+    state: directory
+    recurse: yes
+    owner: "{{ user_name }}"
+    group: "{{ group_name }}"
+    mode: 0775
+
+- name: move backup scripts to nodes
+  ansible.builtin.template:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    backup: yes
+    force: true
+    mode: a+x
+    owner: "{{ user_name }}"
+    group: "{{ group_name }}"
+  loop:
+    - { src: 'full_backup.sh.j2', dest: '{{ backup_script_dir }}/full_backup.sh'}
+    - { src: 'restore.sh.j2', dest: '{{ backup_script_dir }}/restore.sh'}
+    - { src: 'truncate_tables.sh.j2', dest: '{{ backup_script_dir }}/truncate_tables.sh'}
+
+- name: remove old cron jobs
+  ansible.builtin.cron:
+    name: "{{ item }}"
+    state: absent
+  loop:
+    - None
+    - full_backup
+    - incremental_backup
+
+- name: create cron job for weekly full backup
+  ansible.builtin.cron:
+    name: full_backup
+    weekday: "0-6"
+    hour: "0"
+    minute: "0"
+    job: "{{ backup_script_dir }}/full_backup.sh >> /var/log/cassandra/backup.log 2>&1"
+
+- name: Create logrotate entry for backup and restore
+  ansible.builtin.template:
+    src: "logrotate.j2"
+    dest: "/etc/logrotate.d/cassandra"
+    mode: 0644
+    owner: "root"
+    group: "root"
+  become: true
+
+- name: Install cassandra package
+  ansible.builtin.apt:
+    name: cassandra
+    allow_unauthenticated: yes
+    update_cache: yes
+  register: apt_update
+  until: apt_update is success
+
+- name: chown to cassandra::cassandra
+  ansible.builtin.file:
+    path: /etc/cassandra
+    owner: "{{ user_name }}"
+    group: "{{ group_name }}"
+    recurse: true
+
+- name: copy customized jvm settings file
+  ansible.builtin.copy:
+    src: jvm11-server.options
+    dest: /etc/cassandra/jvm11-server.options
+    backup: yes
+    mode: 0644
+    owner: "{{ user_name }}"
+    group: "{{ group_name }}"
+
+- name: service configuration
+  ansible.builtin.copy:
+    src: cassandra
+    dest: /etc/init.d/cassandra
+    backup: yes
+    mode: 0755
+    owner: root
+    group: root
+    force: yes
+  become: yes
+
+- name: update java heap settings - max
+  ansible.builtin.lineinfile:
+    path: /etc/cassandra/jvm-server.options
+    search_string: '-Xmx'
+    line: "-Xmx{{ java_max_heap_size }}"
+    backup: yes
+    mode: 0644
+    owner: "{{ user_name }}"
+    group: "{{ group_name }}"
+
+- name: update java heap settings
+  ansible.builtin.lineinfile:
+    path: /etc/cassandra/jvm-server.options
+    search_string: '-Xms'
+    line: "-Xms{{ java_min_heap_size }}"
+    backup: yes
+    mode: 0644
+    owner: "{{ user_name }}"
+    group: "{{ group_name }}"
+
+- name: Overwrite Cassandra config files
+  ansible.builtin.template:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    mode: 0644
+    owner: "{{ user_name }}"
+    group: "{{ group_name }}"
+    backup: true
+  loop:
+    - { src: 'cassandra.yaml.j2', dest: '/etc/cassandra/cassandra.yaml' }
+    - { src: 'cassandra-env.sh.j2', dest: '/etc/cassandra/cassandra-env.sh' }
+    - { src: 'cassandra-topology.properties.j2', dest: '/etc/cassandra/cassandra-topology.properties' }
+
+- name: set correct ownership on keystore files
+  ansible.builtin.file:
+    path: "{{ certs_dir }}/{{ item }}"
+    state: file
+    mode: 0700
+    owner: "{{ user_name }}"
+    group: "{{ group_name}}"
+    force: true
+  become: yes
+  loop:
+    - truststore.jks
+    - "{{ inventory_hostname}}.jks"
+
+- name: Start and enable cassandra service
+  ansible.builtin.systemd:
+    name: cassandra
+    state: restarted
+    daemon_reload: yes
+    enabled: yes
+  become: yes
+
+- name: check cassandra is up and running
+  ansible.builtin.shell: "nodetool status"
+  retries: "{{ number_of_retries }}"
+  delay: 10
+  until: cass_status.rc | int == 0
+  register: cass_status
+
+- name: print status
+  debug:
+    msg: "{{ cass_status.stdout }}"
+
+- name: validate install
+  ansible.builtin.debug:
+    msg:
+      - "host ({{ item }}) is in the cluster"
+  when: "item in cass_status.stdout"
+  loop: "{{ ansible_play_hosts_all }}"
+
+- name: check cassandra is up and running
+  ansible.builtin.shell: "nodetool status"
+  retries: "{{ number_of_retries }}"
+  delay: 10
+  until:
+    - cass_status.rc | int == 0
+    - ( cass_status.stdout | regex_findall('UN')|length) == (ansible_play_hosts_all | length)
+  register: cass_status
+  when: inventory_hostname == ansible_play_hosts_all[-1]
+
+- name: validate install
+  ansible.builtin.debug:
+    msg:
+      - "host ({{ item }}) in cluster"
+  failed_when: "item not in cass_status.stdout"
+  when: inventory_hostname == ansible_play_hosts_all[-1]
+  loop: "{{ ansible_play_hosts_all }}"
+
+- name: validate nodes are up
+  ansible.builtin.debug:
+    msg:
+      - "Number of nodes in the cluster: {{ cass_status.stdout | regex_findall('UN') | length }}"
+      - "Number of nodes expected: {{ ansible_play_hosts_all |length }}"
+  failed_when: "( cass_status.stdout | regex_findall('UN')|length) != (ansible_play_hosts_all | length)"
+  when: inventory_hostname == ansible_play_hosts_all[-1]

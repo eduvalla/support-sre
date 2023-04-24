@@ -1,0 +1,11 @@
+---
+- name: set statement
+  ansible.builtin.set_fact:
+    stmt: "{'class' : 'NetworkTopologyStrategy', 'dc1' : {{ replication_factor }}};"
+
+- name: update replica factor
+  ansible.builtin.shell: 'cqlsh {{ inventory_hostname }} -e "ALTER KEYSPACE {{ item }} WITH REPLICATION = {{ stmt }}"'
+  loop: "{{ keyspace_list }}"
+  register: output
+
+- debug: var=output

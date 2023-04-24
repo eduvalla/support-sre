@@ -1,0 +1,16 @@
+---
+- name: Install jre
+  become: yes
+  apt:
+    name: openjdk-11-jre-headless
+    state: present
+    update_cache: yes
+  register: apt_update
+  until: apt_update is success
+  retries: 10
+  delay: 30
+
+- name: add extra disk as /mnt
+  include_tasks: tasks/create_sdb_filesystem_mnt.yaml
+  vars:
+    device: "{{ additional_server_disk_device }}"

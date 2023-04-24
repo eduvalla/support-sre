@@ -1,0 +1,13 @@
+unit:
+  apiVersion: v1beta1
+  coreName: ""
+  coreNamespace: ""
+  initialAgentKey: ""
+  resourceProfile: small
+  tenantName: ""
+  unitName: ""
+
+secret:
+  license: ""
+  agentKeys:
+    - ""

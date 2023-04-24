@@ -1,0 +1,28 @@
+---
+CLUSTER_NAME: instana-{{ instana_environment }}-es
+PATH_DATA: /mnt/data
+PATH_LOGS: /mnt/logs
+PATH_PLUGINS: /mnt/plugins
+PATH_WORK: /mnt/work
+ES_INSTALL_PATH: /etc/elasticsearch
+
+IP_MASTER_1: master1
+IP_MASTER_2: master2
+IP_MASTER_3: master3
+
+
+user_name: elasticsearch
+group_name: elasticsearch
+
+certificate_path: /mnt/certs
+use_ssl_clients: false
+
+client_id_list:
+  - root
+  - "{{ user_name }}"
+
+master_hosts_group: elasticsearch
+data_hosts_group: elasticsearch
+
+# customer role need to be defined. Using super access for now
+elasticsearch_role: superuser

@@ -1,0 +1,35 @@
+---
+- name: Get setup script
+  uri:
+    url: https://setup.instana.io/agent
+    dest: /tmp/setup_agent.sh
+    mode: 0700
+    owner: root
+    group: root
+    validate_certs: false
+    force: yes
+  become: yes
+
+- name: Install instana agent
+  shell: "./setup_agent.sh -a {{ instana_monitoring.agent_key }} -d {{ instana_monitoring.download_key }} \
+              -t {{ instana_agent_flavor }} -e {{ instana_monitoring.endpoint }} \
+              -s -y -m {{ instana_agent_mode }}"
+  args:
+    chdir: /tmp
+  become: yes
+
+- name: Create configuration file
+  template:
+    src: "configuration-zone.yaml.j2"
+    dest: "/opt/instana/agent/etc/instana/configuration-zone.yaml"
+    group: root
+    owner: root
+    mode: 0640
+  become: yes
+
+- name: Start and enable instana agent service
+  ansible.builtin.service:
+    name: instana-agent
+    state: started
+    enabled: yes
+  become: yes

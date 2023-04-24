@@ -1,0 +1,44 @@
+---
+#topic settings
+delete_topic_enable: true
+num_network_threads: 3
+num_io_threads: 8
+socket_send_buffer_bytes: 102400
+socket_receive_buffer_bytes: 102400
+socket_request_max_bytes: 104857600
+num_partitions: 1
+num_recovery_threads_per_data_dir: 1
+
+#encryption
+use_ssl: true
+use_ssl_zk: true
+use_ssl_clients: false
+
+zookeeper_insecure_port: 2181
+zookeeper_secure_port: 2281
+
+
+data_directory: /mnt/data/kafka
+log_directory: /mnt/logs/kafka
+
+REPLICATION_FACTOR: 1
+installation_version: 3.1.1
+
+installation_path: /opt/kafka
+
+user_name: kafka
+group_name: kafka
+
+ROOT_MOUNT: /mnt
+
+datastore_directories:
+  - "{{ ROOT_MOUNT }}/data/"
+  - "{{ ROOT_MOUNT }}/logs/"
+
+certificate_path: /mnt/certs
+default_keystore_pass: passw0rd
+default_truststore_pass: passw0rd
+
+artifactRegistry:
+  kafka_package:
+  repository_generic:
